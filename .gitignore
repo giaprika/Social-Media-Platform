@@ -79,3 +79,5 @@ docker-compose.override.yml
 jest/
 .cache/
 eslintcache
+
+project_context.txt
