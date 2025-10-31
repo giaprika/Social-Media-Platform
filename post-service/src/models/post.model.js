@@ -5,10 +5,10 @@ const postSchema = new Schema(
   {
     content: String,
     images: { type: Array, required: true },
-    likes: [{ type: mongoose.Types.ObjectId, ref: "user" }],
+    likes: [{ type: String }],
     comments: [{ type: mongoose.Types.ObjectId, ref: "comment" }],
-    user: { type: mongoose.Types.ObjectId, ref: "user" },
-    reports: [{ type: mongoose.Types.ObjectId, ref: "user" }],
+    userId: { type: String },
+    reports: [{ type: String }],
   },
   { timestamps: true }
 );

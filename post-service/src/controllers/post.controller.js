@@ -40,18 +40,51 @@ const postCtrl = {
   getPosts: async (req, res) => {
     try {
       const features = new APIfeatures(
-        Posts.find({ user: [...req.user.following, req.user._id] }),
+        Posts.find({ userId: [...req.user.following, req.user._id] }),
         req.query
       ).paginating();
+
       const posts = await features.query
         .sort("-createdAt")
-        .populate("user likes", "avatar username fullname followers")
-        .populate({
-          path: "comments",
-          populate: { path: "user likes ", select: "-password" },
-        });
+        .populate("comments");
 
-      res.json({ msg: "Success", result: posts.length, posts });
+      const postsWithUser = await Promise.all(
+        posts.map(async (post) => {
+          let postUser = null;
+          try {
+            const { data } = await axios.get(
+              `${USER_SERVICE_URL}/user/${post.userId}`
+            );
+            postUser = data.user || data;
+          } catch {
+            postUser = null;
+          }
+
+          // gắn user cho comment
+          const commentsWithUser = await Promise.all(
+            post.comments.map(async (comment) => {
+              let commentUser = null;
+              try {
+                const { data } = await axios.get(
+                  `${USER_SERVICE_URL}/user/${comment.userId}`
+                );
+                commentUser = data.user || data;
+              } catch {
+                commentUser = null;
+              }
+              return { ...comment._doc, user: commentUser };
+            })
+          );
+
+          return { ...post._doc, user: postUser, comments: commentsWithUser };
+        })
+      );
+
+      res.json({
+        msg: "Success",
+        result: postsWithUser.length,
+        posts: postsWithUser,
+      });
     } catch (err) {
       return res.status(500).json({ msg: err.message });
     }
@@ -61,14 +94,10 @@ const postCtrl = {
     try {
       const { content, images } = req.body;
       const post = await Posts.findOneAndUpdate(
-        { _id: req.params.id, user: req.user._id },
-        { content, images }
-      )
-        .populate("user likes", "avatar username fullname")
-        .populate({
-          path: "comments",
-          populate: { path: "user likes ", select: "-password" },
-        });
+        { _id: req.params.id, userId: req.user._id },
+        { content, images },
+        { new: true }
+      ).populate("comments");
 
       if (!post)
         return res
@@ -77,7 +106,7 @@ const postCtrl = {
 
       res.json({
         msg: "Post updated successfully.",
-        newPost: { ...post._doc, content, images },
+        newPost: { ...post._doc },
       });
     } catch (err) {
       return res.status(500).json({ msg: err.message });
@@ -138,14 +167,37 @@ const postCtrl = {
 
   getPost: async (req, res) => {
     try {
-      const post = await Posts.findById(req.params.id)
-        .populate("user likes", "avatar username fullname followers")
-        .populate({
-          path: "comments",
-          populate: { path: "user likes ", select: "-password" },
-        });
+      const post = await Posts.findById(req.params.id).populate("comments");
       if (!post) return res.status(400).json({ msg: "Post does not exist." });
-      res.json({ post });
+
+      let postUser = null;
+      try {
+        const { data } = await axios.get(
+          `${USER_SERVICE_URL}/user/${post.userId}`
+        );
+        postUser = data.user || data;
+      } catch {
+        postUser = null;
+      }
+
+      const commentsWithUser = await Promise.all(
+        post.comments.map(async (comment) => {
+          let commentUser = null;
+          try {
+            const { data } = await axios.get(
+              `${USER_SERVICE_URL}/user/${comment.userId}`
+            );
+            commentUser = data.user || data;
+          } catch {
+            commentUser = null;
+          }
+          return { ...comment._doc, user: commentUser };
+        })
+      );
+
+      res.json({
+        post: { ...post._doc, user: postUser, comments: commentsWithUser },
+      });
     } catch (err) {
       return res.status(500).json({ msg: err.message });
     }

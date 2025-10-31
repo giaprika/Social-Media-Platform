@@ -6,12 +6,13 @@ const commentSchema = new Schema(
     content: { type: String, required: true },
     tag: Object,
     reply: mongoose.Types.ObjectId,
-    likes: [{ type: mongoose.Types.ObjectId, ref: "user" }],
-    user: { type: mongoose.Types.ObjectId, ref: "user" },
+    likes: [{ type: String }],
+    userId: { type: String },
     postId: mongoose.Types.ObjectId,
     postUserId: mongoose.Types.ObjectId,
   },
   { timestamps: true }
 );
 
-module.exports = mongoose.models.comment || mongoose.model("comment", commentSchema);
+module.exports =
+  mongoose.models.comment || mongoose.model("comment", commentSchema);
