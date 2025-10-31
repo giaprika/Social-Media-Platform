@@ -5,10 +5,9 @@ const dotenv = require("dotenv");
 dotenv.config({ path: path.resolve(process.cwd(), ".env") });
 
 const config = {
-  PORT: process.env.PORT || 8001,
+  PORT: process.env.PORT || 8002,
   MONGODB_URL: process.env.MONGODB_URL,
-  ACCESS_TOKEN_SECRET: process.env.ACCESS_TOKEN_SECRET,
-  REFRESH_TOKEN_SECRET: process.env.REFRESH_TOKEN_SECRET,
+  USER_SERVICE_URL: process.env.USER_SERVICE_URL,
 };
 
 module.exports = config;
