@@ -4,6 +4,7 @@ const Posts = require("../models/post.model");
 const commentCtrl = {
   createComment: async (req, res) => {
     try {
+      const userId = req.headers["x-user-id"];
       const { postId, content, tag, reply, postUserId } = req.body;
       const post = await Posts.findById(postId);
       if (!post) return res.status(400).json({ msg: "Post does not exist." });
@@ -15,7 +16,7 @@ const commentCtrl = {
       }
 
       const newComment = new Comments({
-        userId: req.user._id,
+        userId: userId,
         content,
         tag,
         reply,
@@ -36,9 +37,10 @@ const commentCtrl = {
 
   updateComment: async (req, res) => {
     try {
+      const userId = req.headers["x-user-id"];
       const { content } = req.body;
       await Comments.findOneAndUpdate(
-        { _id: req.params.id, userId: req.user._id },
+        { _id: req.params.id, userId: userId },
         { content }
       );
       res.json({ msg: "updated successfully." });
@@ -49,9 +51,10 @@ const commentCtrl = {
 
   likeComment: async (req, res) => {
     try {
+      const userId = req.headers["x-user-id"];
       const comment = await Comments.find({
         _id: req.params.id,
-        likes: req.user._id,
+        likes: userId,
       });
       if (comment.length > 0)
         return res
@@ -59,7 +62,7 @@ const commentCtrl = {
           .json({ msg: "You have already liked this post" });
       await Comments.findOneAndUpdate(
         { _id: req.params.id },
-        { $push: { likes: req.user._id } },
+        { $push: { likes: userId } },
         { new: true }
       );
       res.json({ msg: "Comment liked successfully." });
@@ -70,9 +73,10 @@ const commentCtrl = {
 
   unLikeComment: async (req, res) => {
     try {
+      const userId = req.headers["x-user-id"];
       await Comments.findOneAndUpdate(
         { _id: req.params.id },
-        { $pull: { likes: req.user._id } },
+        { $pull: { likes: userId } },
         { new: true }
       );
       res.json({ msg: "Comment unliked successfully." });
@@ -83,9 +87,10 @@ const commentCtrl = {
 
   deleteComment: async (req, res) => {
     try {
+      const userId = req.headers["x-user-id"];
       const comment = await Comments.findOneAndDelete({
         _id: req.params.id,
-        $or: [{ userId: req.user._id }, { postUserId: req.user._id }],
+        $or: [{ userId: userId }, { postUserId: userId }],
       });
       await Posts.findOneAndUpdate(
         { _id: comment.postId },

@@ -61,8 +61,9 @@ const authCtrl = {
 
   changePassword: async (req, res) => {
     try {
+      const userId = req.headers["x-user-id"];
       const { oldPassword, newPassword } = req.body;
-      const user = await Users.findOne({ _id: req.user._id });
+      const user = await Users.findOne({ _id: userId });
 
       const isMatch = await bcrypt.compare(oldPassword, user.password);
       if (!isMatch) {
@@ -77,7 +78,7 @@ const authCtrl = {
 
       const newPasswordHash = await bcrypt.hash(newPassword, 12);
       await Users.findOneAndUpdate(
-        { _id: req.user._id },
+        { _id: userId },
         { password: newPasswordHash }
       );
       res.json({ msg: "Password updated successfully." });
@@ -196,7 +197,7 @@ const authCtrl = {
 
   generateAccessToken: async (req, res) => {
     try {
-      const rf_token = req.cookies.refreshtoken;
+      const rf_token = req.cookies?.refreshtoken;
       if (!rf_token)
         return res.status(400).json({ msg: "Please login again." });
       jwt.verify(

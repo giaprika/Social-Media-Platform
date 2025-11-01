@@ -13,28 +13,30 @@ const Saved = ({ auth, dispatch }) => {
 
   useEffect(() => {
     setLoad(true);
-    getDataAPI(`getSavePosts`, auth.token)
-    .then(res => { 
-        setSavePosts(res.data.savePosts) 
-        setResult(res.data.result)
-        setLoad(false)
-    })  
-    .catch(err => {
-        dispatch({type: GLOBALTYPES.ALERT, payload: {error: err.response.data.msg}})
-    })
+    getDataAPI(`/posts/getSavePosts`)
+      .then((res) => {
+        setSavePosts(res.data.savePosts);
+        setResult(res.data.result);
+        setLoad(false);
+      })
+      .catch((err) => {
+        dispatch({
+          type: GLOBALTYPES.ALERT,
+          payload: { error: err.response.data.msg },
+        });
+      });
 
     return () => setSavePosts([]);
   }, [dispatch, auth.token]);
 
   const handleLoadMore = async () => {
     setLoad(true);
-    const res = await getDataAPI(`getSavePosts?limit=${page * 9}`, auth.token);
+    const res = await getDataAPI(`/posts/getSavePosts?limit=${page * 9}`);
     setSavePosts(res.data.savePosts);
     setResult(res.data.result);
     setPage(page + 1);
     setLoad(false);
   };
-
 
   return (
     <div>

@@ -21,16 +21,19 @@ class APIfeatures {
 const postCtrl = {
   createPost: async (req, res) => {
     try {
+      const userId = req.headers["x-user-id"];
+      const userRes = await axios.get(`${USER_SERVICE_URL}/user/${userId}`);
+      const user = userRes.data.user;
       const { content, images } = req.body;
       if (images.length === 0)
         return res.status(400).json({ msg: "Please add photo(s)" });
 
-      const newPost = new Posts({ content, images, user: req.user._id });
+      const newPost = new Posts({ content, images, userId: user._id });
       await newPost.save();
 
       res.json({
         msg: "Post created successfully.",
-        newPost: { ...newPost._doc, user: req.user },
+        newPost: { ...newPost._doc, user: user },
       });
     } catch (err) {
       return res.status(500).json({ msg: err.message });
@@ -39,8 +42,11 @@ const postCtrl = {
 
   getPosts: async (req, res) => {
     try {
+      const userId = req.headers["x-user-id"];
+      const userRes = await axios.get(`${USER_SERVICE_URL}/user/${userId}`);
+      const user = userRes.data.user;
       const features = new APIfeatures(
-        Posts.find({ userId: [...req.user.following, req.user._id] }),
+        Posts.find({ userId: [...user.following, user._id] }),
         req.query
       ).paginating();
 
@@ -92,9 +98,10 @@ const postCtrl = {
 
   updatePost: async (req, res) => {
     try {
+      const userId = req.headers["x-user-id"];
       const { content, images } = req.body;
       const post = await Posts.findOneAndUpdate(
-        { _id: req.params.id, userId: req.user._id },
+        { _id: req.params.id, userId: userId },
         { content, images },
         { new: true }
       ).populate("comments");
@@ -115,9 +122,10 @@ const postCtrl = {
 
   likePost: async (req, res) => {
     try {
+      const userId = req.headers["x-user-id"];
       const post = await Posts.find({
         _id: req.params.id,
-        likes: req.user._id,
+        likes: userId,
       });
       if (post.length > 0)
         return res
@@ -126,7 +134,7 @@ const postCtrl = {
 
       const like = await Posts.findOneAndUpdate(
         { _id: req.params.id },
-        { $push: { likes: req.user._id } },
+        { $push: { likes: userId } },
         { new: true }
       );
       if (!like) return res.status(400).json({ msg: "Post does not exist." });
@@ -139,9 +147,10 @@ const postCtrl = {
 
   unLikePost: async (req, res) => {
     try {
+      const userId = req.headers["x-user-id"];
       const like = await Posts.findOneAndUpdate(
         { _id: req.params.id },
-        { $pull: { likes: req.user._id } },
+        { $pull: { likes: userId } },
         { new: true }
       );
       if (!like) return res.status(400).json({ msg: "Post does not exist." });
@@ -155,7 +164,7 @@ const postCtrl = {
   getUserPosts: async (req, res) => {
     try {
       const features = new APIfeatures(
-        Posts.find({ user: req.params.id }),
+        Posts.find({ userId: req.params.id }),
         req.query
       ).paginating();
       const posts = await features.query.sort("-createdAt");
@@ -205,7 +214,10 @@ const postCtrl = {
 
   getPostDiscover: async (req, res) => {
     try {
-      const newArr = [...req.user.following, req.user._id];
+      const userId = req.headers["x-user-id"];
+      const userRes = await axios.get(`${USER_SERVICE_URL}/user/${userId}`);
+      const user = userRes.data.user;
+      const newArr = [...user.following, user._id];
       const num = req.query.num || 8;
       const posts = await Posts.aggregate([
         { $match: { user: { $nin: newArr } } },
@@ -219,9 +231,12 @@ const postCtrl = {
 
   deletePost: async (req, res) => {
     try {
+      const userId = req.headers["x-user-id"];
+      const userRes = await axios.get(`${USER_SERVICE_URL}/user/${userId}`);
+      const user = userRes.data.user;
       const post = await Posts.findOneAndDelete({
         _id: req.params.id,
-        user: req.user._id,
+        userId: user._id,
       });
       if (!post)
         return res
@@ -231,7 +246,7 @@ const postCtrl = {
       await Comments.deleteMany({ _id: { $in: post.comments } });
       res.json({
         msg: "Post deleted successfully.",
-        newPost: { ...post, user: req.user },
+        newPost: { ...post, user: user },
       });
     } catch (err) {
       return res.status(500).json({ msg: err.message });
@@ -240,9 +255,10 @@ const postCtrl = {
 
   reportPost: async (req, res) => {
     try {
+      const userId = req.headers["x-user-id"];
       const post = await Posts.find({
         _id: req.params.id,
-        reports: req.user._id,
+        reports: userId,
       });
       if (post.length > 0)
         return res
@@ -251,7 +267,7 @@ const postCtrl = {
 
       const report = await Posts.findOneAndUpdate(
         { _id: req.params.id },
-        { $push: { reports: req.user._id } },
+        { $push: { reports: userId } },
         { new: true }
       );
       if (!report) return res.status(400).json({ msg: "Post does not exist." });
@@ -264,9 +280,10 @@ const postCtrl = {
 
   savePost: async (req, res) => {
     try {
+      const userId = req.headers["x-user-id"];
       // Gọi API sang user-service
       const { data } = await axios.post(
-        `${USER_SERVICE_URL}/${req.user._id}/save`,
+        `${USER_SERVICE_URL}/${userId}/savePost`,
         {
           postId: req.params.id,
         }
@@ -283,9 +300,10 @@ const postCtrl = {
 
   unSavePost: async (req, res) => {
     try {
+      const userId = req.headers["x-user-id"];
       // Gọi API sang user-service
       const response = await axios.post(
-        `${USER_SERVICE_URL}/${req.user._id}/unsave`,
+        `${USER_SERVICE_URL}/${userId}/unsavePost`,
         {
           postId: req.params.id,
         }
@@ -305,8 +323,11 @@ const postCtrl = {
 
   getSavePost: async (req, res) => {
     try {
+      const userId = req.headers["x-user-id"];
+      const userRes = await axios.get(`${USER_SERVICE_URL}/user/${userId}`);
+      const user = userRes.data.user;
       const features = new APIfeatures(
-        Posts.find({ _id: { $in: req.user.saved } }),
+        Posts.find({ _id: { $in: user.saved } }),
         req.query
       ).paginating();
       const savePosts = await features.query.sort("-createdAt");

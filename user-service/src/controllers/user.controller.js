@@ -29,13 +29,14 @@ const userCtrl = {
 
   updateUser: async (req, res) => {
     try {
+      const userId = req.headers["x-user-id"];
       const { avatar, fullname, mobile, address, story, website, gender } =
         req.body;
       if (!fullname)
         return res.status(400).json({ msg: "Please add your full name." });
 
       await Users.findOneAndUpdate(
-        { _id: req.user._id },
+        { _id: userId },
         { avatar, fullname, mobile, address, story, website, gender }
       );
       res.json({ msg: "Profile updated successfully." });
@@ -46,9 +47,10 @@ const userCtrl = {
 
   follow: async (req, res) => {
     try {
+      const userId = req.headers["x-user-id"];
       const user = await Users.find({
         _id: req.params.id,
-        followers: req.user._id,
+        followers: userId,
       });
       if (user.length > 0)
         return res
@@ -57,12 +59,12 @@ const userCtrl = {
 
       const newUser = await Users.findOneAndUpdate(
         { _id: req.params.id },
-        { $push: { followers: req.user._id } },
+        { $push: { followers: userId } },
         { new: true }
       ).populate("followers following", "-password");
 
       await Users.findOneAndUpdate(
-        { _id: req.user._id },
+        { _id: userId },
         { $push: { following: req.params.id } },
         { new: true }
       );
@@ -74,14 +76,15 @@ const userCtrl = {
 
   unfollow: async (req, res) => {
     try {
+      const userId = req.headers["x-user-id"];
       const newUser = await Users.findOneAndUpdate(
         { _id: req.params.id },
-        { $pull: { followers: req.user._id } },
+        { $pull: { followers: userId } },
         { new: true }
       ).populate("followers following", "-password");
 
       await Users.findOneAndUpdate(
-        { _id: req.user._id },
+        { _id: userId },
         { $pull: { following: req.params.id } },
         { new: true }
       );
@@ -93,7 +96,11 @@ const userCtrl = {
 
   suggestionsUser: async (req, res) => {
     try {
-      const newArr = [...req.user.following, req.user._id];
+      const userId = req.headers["x-user-id"];
+      const user = await Users.findById(userId)
+        .select("-password")
+        .populate("followers following", "-password");
+      const newArr = [...user.following, user._id];
       const num = req.query.num || 10;
       const users = await Users.aggregate([
         { $match: { _id: { $nin: newArr } } },

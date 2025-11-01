@@ -1,10 +1,9 @@
 const router = require("express").Router();
 const authCtrl = require("../controllers/auth.controller");
-const auth = require("../middleware/auth");
 
 router.post("/register", authCtrl.register);
 router.post("/register_admin", authCtrl.registerAdmin);
-router.post("/changePassword", auth, authCtrl.changePassword);
+router.post("/changePassword", authCtrl.changePassword);
 
 router.post("/login", authCtrl.login);
 router.post("/admin_login", authCtrl.adminLogin);

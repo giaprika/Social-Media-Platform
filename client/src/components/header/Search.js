@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch } from "react-redux";
 import { getDataAPI } from "../../utils/fetchData";
 import { GLOBALTYPES } from "../../redux/actions/globalTypes";
 // import { Link } from "react-router-dom";
@@ -10,7 +10,6 @@ const Search = () => {
   const [search, setSearch] = useState("");
   const [users, setUsers] = useState([]);
 
-  const { auth } = useSelector((state) => state);
   const dispatch = useDispatch();
   const [load, setLoad] = useState(false);
 
@@ -21,7 +20,7 @@ const Search = () => {
 
     try {
       setLoad(true);
-      const res = await getDataAPI(`search?username=${search}`, auth.token);
+      const res = await getDataAPI(`/users/search?username=${search}`);
       setUsers(res.data.users);
       setLoad(false);
     } catch (err) {

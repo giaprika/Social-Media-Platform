@@ -7,9 +7,11 @@ const USER_SERVICE_URL = config.USER_SERVICE_URL;
 const notifyCtrl = {
   createNotify: async (req, res) => {
     try {
+      const userId = req.headers["x-user-id"];
       const { id, recipients, url, text, content, image } = req.body;
-      if (recipients.includes(req.user._id.toString())) return;
-
+      if (recipients.includes(userId.toString())) {
+        return res.json({ msg: "self notify" });
+      }
       const notify = new Notifies({
         id,
         recipients,
@@ -17,11 +19,12 @@ const notifyCtrl = {
         text,
         content,
         image,
-        userId: req.user._id,
+        userId: userId,
       });
       await notify.save();
       return res.json({ notify });
     } catch (err) {
+      console.log("notify error:", err.message);
       return res.status(500).json({ msg: err.message });
     }
   },
@@ -40,8 +43,9 @@ const notifyCtrl = {
 
   getNotifies: async (req, res) => {
     try {
+      const userId = req.headers["x-user-id"];
       const notifies = await Notifies.find({
-        recipients: req.user._id,
+        recipients: userId,
       }).sort("-createdAt");
 
       // Gọi sang user-service để lấy thông tin người gửi
@@ -83,7 +87,8 @@ const notifyCtrl = {
 
   deleteAllNotifies: async (req, res) => {
     try {
-      const notifies = await Notifies.deleteMany({ recipients: req.user._id });
+      const userId = req.headers["x-user-id"];
+      const notifies = await Notifies.deleteMany({ recipients: userId });
       return res.json({ notifies });
     } catch (err) {
       return res.status(500).json({ msg: err.message });

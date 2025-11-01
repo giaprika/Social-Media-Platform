@@ -22,23 +22,24 @@ class APIfeatures {
 const messageCtrl = {
   createMessage: async (req, res) => {
     try {
+      const userId = req.headers["x-user-id"];
       const { recipient, text, media } = req.body;
       if (!recipient || (!text.trim() && media.length === 0)) return;
 
       const newConversation = await Conversations.findOneAndUpdate(
         {
           $or: [
-            { recipients: [req.user._id, recipient] },
-            { recipients: [recipient, req.user._id] },
+            { recipients: [userId, recipient] },
+            { recipients: [recipient, userId] },
           ],
         },
-        { recipients: [req.user._id, recipient], text, media },
+        { recipients: [userId, recipient], text, media },
         { new: true, upsert: true }
       );
 
       const newMessage = new Messages({
         conversation: newConversation._id,
-        sender: req.user._id,
+        sender: userId,
         recipient,
         text,
         media,
@@ -52,8 +53,9 @@ const messageCtrl = {
 
   getConversations: async (req, res) => {
     try {
+      const userId = req.headers["x-user-id"];
       const features = new APIfeatures(
-        Conversations.find({ recipients: req.user._id }),
+        Conversations.find({ recipients: userId }),
         req.query
       ).paginating();
 
@@ -62,7 +64,7 @@ const messageCtrl = {
       // Gọi sang user-service để lấy thông tin người dùng
       const conversationsWithUser = await Promise.all(
         conversations.map(async (conv) => {
-          const otherUserId = conv.recipients.find((id) => id !== req.user._id);
+          const otherUserId = conv.recipients.find((id) => id !== userId);
 
           try {
             const { data: user } = await axios.get(
@@ -88,11 +90,12 @@ const messageCtrl = {
 
   getMessages: async (req, res) => {
     try {
+      const userId = req.headers["x-user-id"];
       const features = new APIfeatures(
         Messages.find({
           $or: [
-            { sender: req.user._id, recipient: req.params.id },
-            { sender: req.params.id, recipient: req.user._id },
+            { sender: userId, recipient: req.params.id },
+            { sender: req.params.id, recipient: userId },
           ],
         }),
         req.query

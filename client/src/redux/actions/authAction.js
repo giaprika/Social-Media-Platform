@@ -9,7 +9,8 @@ export const TYPES = {
 export const login = (data) => async (dispatch) => {
   try {
     dispatch({ type: GLOBALTYPES.ALERT, payload: { loading: true } });
-    const res = await postDataAPI("login", data);
+    const res = await postDataAPI("/users/login", data);
+    console.log("login respone:", res.data);
 
     dispatch({
       type: GLOBALTYPES.AUTH,
@@ -31,50 +32,51 @@ export const login = (data) => async (dispatch) => {
   }
 };
 
-export const changePassword = ({oldPassword, newPassword, cnfNewPassword, auth}) => async (dispatch) => {
+export const changePassword =
+  ({ oldPassword, newPassword, cnfNewPassword, auth }) =>
+  async (dispatch) => {
+    if (!oldPassword || oldPassword.length === 0) {
+      dispatch({
+        type: GLOBALTYPES.ALERT,
+        payload: { error: "Please enter your old  password." },
+      });
+    }
+    if (!newPassword || newPassword.length === 0) {
+      dispatch({
+        type: GLOBALTYPES.ALERT,
+        payload: { error: "Please enter your new  password." },
+      });
+    }
+    if (!cnfNewPassword || cnfNewPassword.length === 0) {
+      dispatch({
+        type: GLOBALTYPES.ALERT,
+        payload: { error: "Please confirm your new  password." },
+      });
+    }
+    if (newPassword !== cnfNewPassword) {
+      dispatch({
+        type: GLOBALTYPES.ALERT,
+        payload: { error: "Your password does not match" },
+      });
+    }
 
-  if(!oldPassword || oldPassword.length === 0){
-    dispatch({
-      type: GLOBALTYPES.ALERT,
-      payload: { error: "Please enter your old  password." },
-    });
-  }
-  if(!newPassword || newPassword.length === 0){
-    dispatch({
-      type: GLOBALTYPES.ALERT,
-      payload: { error: "Please enter your new  password." },
-    });
-  }
-  if(!cnfNewPassword || cnfNewPassword.length === 0){
-    dispatch({
-      type: GLOBALTYPES.ALERT,
-      payload: { error: "Please confirm your new  password." },
-    });
-  }
-  if(newPassword !==cnfNewPassword){
-    dispatch({
-      type: GLOBALTYPES.ALERT,
-      payload: { error: "Your password does not match" },
-    });
-  }
-  
-  try {
-    
-    
+    try {
+      dispatch({ type: GLOBALTYPES.ALERT, payload: { loading: true } });
 
-    dispatch({ type: GLOBALTYPES.ALERT, payload: {loading: true} });
+      const res = await postDataAPI("/users/changePassword", {
+        oldPassword,
+        newPassword,
+      });
 
-    const res = await postDataAPI('changePassword', {oldPassword, newPassword}, auth.token );
-
-    dispatch({ type: GLOBALTYPES.ALERT, payload: {loading: false} });
-    dispatch({ type: GLOBALTYPES.ALERT, payload: { success: res.data.msg } });
-  } catch (err) {
-    dispatch({
-      type: GLOBALTYPES.ALERT,
-      payload: { error: err.response.data.msg },
-    });
-  }
-};
+      dispatch({ type: GLOBALTYPES.ALERT, payload: { loading: false } });
+      dispatch({ type: GLOBALTYPES.ALERT, payload: { success: res.data.msg } });
+    } catch (err) {
+      dispatch({
+        type: GLOBALTYPES.ALERT,
+        payload: { error: err.response.data.msg },
+      });
+    }
+  };
 
 export const adminLogin = (data) => async (dispatch) => {
   try {
@@ -106,7 +108,7 @@ export const refreshToken = () => async (dispatch) => {
   if (firstLogin) {
     dispatch({ type: GLOBALTYPES.ALERT, payload: { loading: true } });
     try {
-      const res = await postDataAPI("refresh_token");
+      const res = await postDataAPI("/users/refresh_token");
       dispatch({
         type: GLOBALTYPES.AUTH,
         payload: { token: res.data.access_token, user: res.data.user },
@@ -136,7 +138,7 @@ export const register = (data) => async (dispatch) => {
   try {
     dispatch({ type: GLOBALTYPES.ALERT, payload: { loading: true } });
 
-    const res = await postDataAPI("register", data);
+    const res = await postDataAPI("/users/register", data);
 
     dispatch({
       type: GLOBALTYPES.AUTH,
@@ -182,7 +184,7 @@ export const logout = () => async (dispatch) => {
   try {
     localStorage.removeItem("firstLogin");
 
-    await postDataAPI("logout");
+    await postDataAPI("/users/logout");
     window.location.href = "/";
   } catch (err) {
     dispatch({

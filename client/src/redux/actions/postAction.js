@@ -36,11 +36,7 @@ export const createPost =
         console.log("media", media);
       }
 
-      const res = await postDataAPI(
-        "posts",
-        { content, images: media },
-        auth.token
-      );
+      const res = await postDataAPI("/posts/posts", { content, images: media });
 
       console.log("res", res);
 
@@ -76,7 +72,7 @@ export const createPost =
 export const getPosts = (token) => async (dispatch) => {
   try {
     dispatch({ type: POST_TYPES.LOADING_POST, payload: true });
-    const res = await getDataAPI("posts", token);
+    const res = await getDataAPI("/posts/posts");
     dispatch({ type: POST_TYPES.GET_POSTS, payload: { ...res.data, page: 2 } });
 
     dispatch({ type: POST_TYPES.LOADING_POST, payload: false });
@@ -108,11 +104,10 @@ export const updatePost =
       if (imgNewUrl.length > 0) {
         media = await imageUpload(imgNewUrl);
       }
-      const res = await patchDataAPI(
-        `post/${status._id}`,
-        { content, images: [...imgOldUrl, ...media] },
-        auth.token
-      );
+      const res = await patchDataAPI(`/posts/post/${status._id}`, {
+        content,
+        images: [...imgOldUrl, ...media],
+      });
 
       dispatch({ type: POST_TYPES.UPDATE_POST, payload: res.data.newPost });
       dispatch({ type: GLOBALTYPES.ALERT, payload: { success: res.data.msg } });
@@ -135,7 +130,7 @@ export const likePost =
     socket.emit("likePost", newPost);
 
     try {
-      await patchDataAPI(`post/${post._id}/like`, null, auth.token);
+      await patchDataAPI(`/posts/post/${post._id}/like`, null);
 
       // todo notification
       const msg = {
@@ -170,7 +165,7 @@ export const unLikePost =
     socket.emit("unLikePost", newPost);
 
     try {
-      await patchDataAPI(`post/${post._id}/unlike`, null, auth.token);
+      await patchDataAPI(`/posts/post/${post._id}/unlike`, null);
 
       // todo notification
       const msg = {
@@ -196,7 +191,7 @@ export const getPost =
   async (dispatch) => {
     if (detailPost.every((post) => post._id !== id)) {
       try {
-        const res = await getDataAPI(`post/${id}`, auth.token);
+        const res = await getDataAPI(`/posts/post/${id}`);
         dispatch({ type: POST_TYPES.GET_POST, payload: res.data.post });
       } catch (err) {
         dispatch({
@@ -215,7 +210,7 @@ export const deletePost =
     dispatch({ type: POST_TYPES.DELETE_POST, payload: post });
 
     try {
-      const res = await deleteDataAPI(`post/${post._id}`, auth.token);
+      const res = await deleteDataAPI(`/posts/post/${post._id}`);
 
       // todo notification
       const msg = {
@@ -253,11 +248,7 @@ export const reportPost =
     dispatch({ type: POST_TYPES.REPORT_POST, payload: newPost });
 
     try {
-      const res = await patchDataAPI(
-        `post/${post._id}/report`,
-        null,
-        auth.token
-      );
+      const res = await patchDataAPI(`/posts/post/${post._id}/report`, null);
       dispatch({ type: GLOBALTYPES.ALERT, payload: { success: res.data.msg } });
     } catch (err) {
       dispatch({
@@ -277,7 +268,7 @@ export const savePost =
     dispatch({ type: GLOBALTYPES.AUTH, payload: { ...auth, user: newUser } });
 
     try {
-      await patchDataAPI(`savePost/${post._id}`, null, auth.token);
+      await patchDataAPI(`/posts/savePost/${post._id}`, null);
     } catch (err) {
       dispatch({
         type: GLOBALTYPES.ALERT,
@@ -299,7 +290,7 @@ export const unSavePost =
     dispatch({ type: GLOBALTYPES.AUTH, payload: { ...auth, user: newUser } });
 
     try {
-      await patchDataAPI(`unSavePost/${post._id}`, null, auth.token);
+      await patchDataAPI(`/posts/unSavePost/${post._id}`, null);
     } catch (err) {
       dispatch({
         type: GLOBALTYPES.ALERT,
