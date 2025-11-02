@@ -100,5 +100,20 @@ const userServiceInstance = createAxiosInstance({
   serviceName: "users",
 });
 
+const postServiceInstance = createAxiosInstance({
+  timeout: config.services.posts.timeout,
+  serviceName: "posts",
+});
+
+const notificationServiceInstance = createAxiosInstance({
+  timeout: config.services.notifications.timeout,
+  serviceName: "notifications",
+});
+
 // Export factory function để tạo custom instances
-export { createAxiosInstance, userServiceInstance };
+export {
+  createAxiosInstance,
+  userServiceInstance,
+  postServiceInstance,
+  notificationServiceInstance,
+};

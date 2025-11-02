@@ -15,6 +15,7 @@ import { refreshToken } from "./redux/actions/authAction";
 import { getPosts } from "./redux/actions/postAction";
 import { getSuggestions } from "./redux/actions/suggestionsAction";
 import { getNotifies } from "./redux/actions/notifyAction";
+import { getFeedData } from "./redux/actions/feedAction";
 
 import AdminDashboard from "./pages/adminDashboard";
 import { GLOBALTYPES } from "./redux/actions/globalTypes";
