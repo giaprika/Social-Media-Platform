@@ -140,17 +140,11 @@ const authCtrl = {
       const access_token = createAccessToken({ id: user._id });
       const refresh_token = createRefreshToken({ id: user._id });
 
-      res.cookie("refreshtoken", refresh_token, {
-        httpOnly: true,
-        path: "/api/refresh_token",
-        sameSite: "lax",
-        maxAge: 30 * 24 * 60 * 60 * 1000,
-      });
-
       res.json({
         msg: "Logged in  Successfully!",
         access_token,
         user: { ...user._doc, password: "" },
+        refresh_token: refresh_token,
       });
     } catch (err) {
       return res.status(500).json({ msg: err.message });
@@ -197,7 +191,7 @@ const authCtrl = {
 
   generateAccessToken: async (req, res) => {
     try {
-      const rf_token = req.cookies?.refreshtoken;
+      const rf_token = req.cookies?.refresh_token;
       if (!rf_token)
         return res.status(400).json({ msg: "Please login again." });
       jwt.verify(

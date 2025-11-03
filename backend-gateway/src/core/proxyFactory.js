@@ -18,6 +18,7 @@ const createProxy = (serviceConfig) => {
     timeout,
     proxyTimeout: timeout,
     retries,
+    credentials: true,
 
     onProxyReq: (proxyReq, req, res) => {
       proxyReq.setHeader("Accept", "application/json");

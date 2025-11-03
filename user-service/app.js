@@ -1,6 +1,8 @@
+const cookieParser = require("cookie-parser");
 const express = require("express");
 
 const app = express();
+app.use(cookieParser());
 
 const userRoutes = require("./src/routes/user.routes");
 const authRoutes = require("./src/routes/auth.routes");

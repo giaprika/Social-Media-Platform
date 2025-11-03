@@ -11,7 +11,8 @@ export const login = (data) => async (dispatch) => {
     dispatch({ type: GLOBALTYPES.ALERT, payload: { loading: true } });
     const res = await postDataAPI("/users/login", data);
     console.log("login respone:", res.data);
-
+    const refresh_token = res.data.refresh_token;
+    document.cookie = `refresh_token=${refresh_token}`;
     dispatch({
       type: GLOBALTYPES.AUTH,
       payload: { token: res.data.access_token, user: res.data.user },
