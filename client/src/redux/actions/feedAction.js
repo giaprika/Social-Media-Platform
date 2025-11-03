@@ -24,7 +24,7 @@ export const getFeedData = (token) => async (dispatch) => {
 
     dispatch({
       type: NOTIFY_TYPES.GET_NOTIFIES,
-      payload: res.data.notifies,
+      payload: res.data.notifies.notifies,
     });
 
     dispatch({ type: POST_TYPES.LOADING_POST, payload: false });

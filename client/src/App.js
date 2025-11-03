@@ -12,9 +12,6 @@ import Alert from "./components/alert/Alert";
 import Header from "./components/header/Header";
 import StatusModal from "./components/StatusModal";
 import { refreshToken } from "./redux/actions/authAction";
-import { getPosts } from "./redux/actions/postAction";
-import { getSuggestions } from "./redux/actions/suggestionsAction";
-import { getNotifies } from "./redux/actions/notifyAction";
 import { getFeedData } from "./redux/actions/feedAction";
 
 import AdminDashboard from "./pages/adminDashboard";
@@ -38,9 +35,7 @@ function App() {
 
   useEffect(() => {
     if (auth.token) {
-      dispatch(getPosts(auth.token));
-      dispatch(getSuggestions(auth.token));
-      dispatch(getNotifies(auth.token));
+      dispatch(getFeedData(auth.token));
     }
   }, [dispatch, auth.token]);
 

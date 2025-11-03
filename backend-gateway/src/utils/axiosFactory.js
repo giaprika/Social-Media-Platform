@@ -12,8 +12,6 @@ const createAxiosInstance = (options = {}) => {
     headers = {},
   } = options;
 
-  console.log(baseURL);
-
   const instance = axios.create({
     baseURL,
     timeout,

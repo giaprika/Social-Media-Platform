@@ -14,10 +14,6 @@ class FeedServiceController {
         notificationServiceInstance.get(`/notifies`),
       ]);
 
-      console.log("postsRes:", postsRes.data);
-      console.log("usersRes:", usersRes.data);
-      console.log("notifiesRes:", notifiesRes.data);
-
       res.json({
         posts: postsRes.data,
         suggestions: usersRes.data,
