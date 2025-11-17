@@ -2,6 +2,7 @@ const Users = require("../models/user.model");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const config = require("../config/env");
+const cache = require("../utils/cache");
 
 const authCtrl = {
   register: async (req, res) => {
@@ -81,6 +82,10 @@ const authCtrl = {
         { _id: userId },
         { password: newPasswordHash }
       );
+      // invalidate cache for this user
+      await cache.del(`cache:users:getUser:${userId}`);
+      await cache.del("cache:users:*");
+
       res.json({ msg: "Password updated successfully." });
     } catch (err) {
       return res.status(500).json({ msg: err.message });

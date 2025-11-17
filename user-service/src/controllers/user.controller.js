@@ -1,14 +1,20 @@
 const Users = require("../models/user.model");
+const cache = require("../utils/cache");
 
 const userCtrl = {
   searchUser: async (req, res) => {
     try {
-      const users = await Users.find({
-        username: { $regex: req.query.username },
-      })
+      const q = req.query.username || "";
+      const cacheKey = `cache:users:searchUser:${q}`;
+      const cached = await cache.get(cacheKey);
+      if (cached) return res.json(cached);
+
+      const users = await Users.find({ username: { $regex: q } })
         .limit(10)
         .select("fullname username avatar");
-      res.json({ users });
+      const payload = { users };
+      await cache.set(cacheKey, payload);
+      res.json(payload);
     } catch (err) {
       return res.status(500).json({ msg: err.message });
     }
@@ -16,12 +22,19 @@ const userCtrl = {
 
   getUser: async (req, res) => {
     try {
+      const cacheKey = `cache:users:getUser:${req.params.id}`;
+      const cached = await cache.get(cacheKey);
+      if (cached) return res.json(cached);
+
       const user = await Users.findById(req.params.id)
         .select("-password")
         .populate("followers following", "-password");
       if (!user)
         return res.status(400).json({ msg: "requested user does not exist." });
-      res.json({ user });
+
+      const payload = { user };
+      await cache.set(cacheKey, payload);
+      res.json(payload);
     } catch (err) {
       return res.status(500).json({ msg: err.message });
     }
@@ -39,6 +52,10 @@ const userCtrl = {
         { _id: userId },
         { avatar, fullname, mobile, address, story, website, gender }
       );
+      // invalidate user cache
+      await cache.del(`cache:users:getUser:${userId}`);
+      await cache.del("cache:users:*");
+
       res.json({ msg: "Profile updated successfully." });
     } catch (err) {
       return res.status(500).json({ msg: err.message });
@@ -68,6 +85,11 @@ const userCtrl = {
         { $push: { following: req.params.id } },
         { new: true }
       );
+      // invalidate caches for affected users
+      await cache.del(`cache:users:getUser:${req.params.id}`);
+      await cache.del(`cache:users:getUser:${userId}`);
+      await cache.del("cache:users:*");
+
       res.json({ newUser });
     } catch (err) {
       return res.status(500).json({ msg: err.message });
@@ -88,6 +110,11 @@ const userCtrl = {
         { $pull: { following: req.params.id } },
         { new: true }
       );
+      // invalidate caches for affected users
+      await cache.del(`cache:users:getUser:${req.params.id}`);
+      await cache.del(`cache:users:getUser:${userId}`);
+      await cache.del("cache:users:*");
+
       res.json({ newUser });
     } catch (err) {
       return res.status(500).json({ msg: err.message });
@@ -97,6 +124,12 @@ const userCtrl = {
   suggestionsUser: async (req, res) => {
     try {
       const userId = req.headers["x-user-id"];
+      const cacheKey = `cache:users:suggestionsUser:${userId}:${JSON.stringify(
+        req.query || {}
+      )}`;
+      const cached = await cache.get(cacheKey);
+      if (cached) return res.json(cached);
+
       const user = await Users.findById(userId)
         .select("-password")
         .populate("followers following", "-password");
@@ -123,7 +156,9 @@ const userCtrl = {
         },
       ]).project("-password");
 
-      return res.json({ users, result: users.length });
+      const payload = { users, result: users.length };
+      await cache.set(cacheKey, payload);
+      return res.json(payload);
     } catch (err) {
       return res.status(500).json({ msg: err.message });
     }
@@ -140,6 +175,9 @@ const userCtrl = {
 
       user.saved.push(postId);
       await user.save();
+      // invalidate related caches for this user
+      await cache.del(`cache:users:getUser:${req.params.id}`);
+      await cache.del(`cache:users:suggestionsUser:${req.params.id}:*`);
 
       res.json({ msg: "Post saved successfully" });
     } catch (err) {
@@ -161,6 +199,9 @@ const userCtrl = {
 
       user.saved = user.saved.filter((p) => p.toString() !== postId);
       await user.save();
+      // invalidate related caches for this user
+      await cache.del(`cache:users:getUser:${req.params.id}`);
+      await cache.del(`cache:users:suggestionsUser:${req.params.id}:*`);
 
       res.json({ msg: "Post removed from collection successfully." });
     } catch (err) {

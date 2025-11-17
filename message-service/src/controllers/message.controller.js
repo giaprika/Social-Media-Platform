@@ -2,6 +2,7 @@ const Conversations = require("../models/conversation.model");
 const Messages = require("../models/message.model");
 const axios = require("axios");
 const config = require("../config/env");
+const cache = require("../utils/cache");
 
 const USER_SERVICE_URL = config.USER_SERVICE_URL;
 
@@ -45,6 +46,8 @@ const messageCtrl = {
         media,
       });
       await newMessage.save();
+      // invalidate messages cache for relevant users
+      await cache.del("cache:messages:*");
       res.json({ msg: "Created." });
     } catch (err) {
       return res.status(500).json({ msg: err.message });
@@ -54,6 +57,11 @@ const messageCtrl = {
   getConversations: async (req, res) => {
     try {
       const userId = req.headers["x-user-id"];
+      const cacheKey = `cache:messages:getConversations:${userId}:${JSON.stringify(
+        req.query || {}
+      )}`;
+      const cached = await cache.get(cacheKey);
+      if (cached) return res.json(cached);
       const features = new APIfeatures(
         Conversations.find({ recipients: userId }),
         req.query
@@ -77,11 +85,13 @@ const messageCtrl = {
         })
       );
 
-      res.json({
+      const payload = {
         msg: "Success",
         result: conversationsWithUser.length,
         conversations: conversationsWithUser,
-      });
+      };
+      await cache.set(cacheKey, payload);
+      res.json(payload);
     } catch (err) {
       console.error(err);
       return res.status(500).json({ msg: err.message });
@@ -91,6 +101,11 @@ const messageCtrl = {
   getMessages: async (req, res) => {
     try {
       const userId = req.headers["x-user-id"];
+      const cacheKey = `cache:messages:getMessages:${userId}:${
+        req.params.id
+      }:${JSON.stringify(req.query || {})}`;
+      const cached = await cache.get(cacheKey);
+      if (cached) return res.json(cached);
       const features = new APIfeatures(
         Messages.find({
           $or: [
@@ -102,7 +117,9 @@ const messageCtrl = {
       ).paginating();
 
       const messages = await features.query.sort("-createdAt");
-      res.json({ messages, result: messages.length });
+      const payload = { messages, result: messages.length };
+      await cache.set(cacheKey, payload);
+      res.json(payload);
     } catch (err) {
       return res.status(500).json({ msg: err.message });
     }

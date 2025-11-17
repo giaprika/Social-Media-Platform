@@ -1,6 +1,7 @@
 const Notifies = require("../models/notify.model");
 const axios = require("axios");
 const config = require("../config/env");
+const cache = require("../utils/cache");
 
 const USER_SERVICE_URL = config.USER_SERVICE_URL;
 
@@ -22,6 +23,10 @@ const notifyCtrl = {
         userId: userId,
       });
       await notify.save();
+      // invalidate notifications cache for recipients
+      for (const r of recipients) {
+        await cache.del(`cache:notifications:getNotifies:${r}:*`);
+      }
       return res.json({ notify });
     } catch (err) {
       console.log("notify error:", err.message);
@@ -35,6 +40,12 @@ const notifyCtrl = {
         id: req.params.id,
         url: req.query.url,
       });
+      // invalidate cache for relevant recipients
+      if (notify && notify.recipients && notify.recipients.length) {
+        for (const r of notify.recipients) {
+          await cache.del(`cache:notifications:getNotifies:${r}:*`);
+        }
+      }
       return res.json({ notify });
     } catch (err) {
       return res.status(500).json({ msg: err.message });
@@ -44,6 +55,12 @@ const notifyCtrl = {
   getNotifies: async (req, res) => {
     try {
       const userId = req.headers["x-user-id"];
+      const cacheKey = `cache:notifications:getNotifies:${userId}:${JSON.stringify(
+        req.query || {}
+      )}`;
+      const cached = await cache.get(cacheKey);
+      if (cached) return res.json(cached);
+
       const notifies = await Notifies.find({
         recipients: userId,
       }).sort("-createdAt");
@@ -62,11 +79,13 @@ const notifyCtrl = {
         })
       );
 
-      return res.json({
+      const payload = {
         msg: "Success",
         result: notifiesWithUser.length,
         notifies: notifiesWithUser,
-      });
+      };
+      await cache.set(cacheKey, payload);
+      return res.json(payload);
     } catch (err) {
       console.error(err);
       return res.status(500).json({ msg: err.message });
@@ -79,6 +98,12 @@ const notifyCtrl = {
         { _id: req.params.id },
         { isRead: true }
       );
+      // invalidate cache for the user(s)
+      if (notifies && notifies.recipients) {
+        for (const r of notifies.recipients) {
+          await cache.del(`cache:notifications:getNotifies:${r}:*`);
+        }
+      }
       return res.json({ notifies });
     } catch (err) {
       return res.status(500).json({ msg: err.message });
@@ -89,6 +114,8 @@ const notifyCtrl = {
     try {
       const userId = req.headers["x-user-id"];
       const notifies = await Notifies.deleteMany({ recipients: userId });
+      // invalidate all notifications cache for this user
+      await cache.del(`cache:notifications:getNotifies:${userId}:*`);
       return res.json({ notifies });
     } catch (err) {
       return res.status(500).json({ msg: err.message });

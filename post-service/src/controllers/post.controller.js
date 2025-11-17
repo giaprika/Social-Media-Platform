@@ -3,6 +3,7 @@ const Comments = require("../models/comment.model");
 const config = require("../config/env");
 const USER_SERVICE_URL = config.USER_SERVICE_URL;
 const axios = require("axios");
+const cache = require("../utils/cache");
 
 class APIfeatures {
   constructor(query, queryString) {
@@ -31,6 +32,9 @@ const postCtrl = {
       const newPost = new Posts({ content, images, userId: user._id });
       await newPost.save();
 
+      // invalidate posts cache
+      await cache.del("cache:posts:*");
+
       res.json({
         msg: "Post created successfully.",
         newPost: { ...newPost._doc, user: user },
@@ -43,6 +47,11 @@ const postCtrl = {
   getPosts: async (req, res) => {
     try {
       const userId = req.headers["x-user-id"];
+      const cacheKey = `cache:posts:getPosts:${userId}:${JSON.stringify(
+        req.query || {}
+      )}`;
+      const cached = await cache.get(cacheKey);
+      if (cached) return res.json(cached);
       const userRes = await axios.get(`${USER_SERVICE_URL}/user/${userId}`);
       const user = userRes.data.user;
       const features = new APIfeatures(
@@ -86,11 +95,16 @@ const postCtrl = {
         })
       );
 
-      res.json({
+      const payload = {
         msg: "Success",
         result: postsWithUser.length,
         posts: postsWithUser,
-      });
+      };
+
+      // cache result
+      await cache.set(cacheKey, payload);
+
+      res.json(payload);
     } catch (err) {
       return res.status(500).json({ msg: err.message });
     }
@@ -110,6 +124,9 @@ const postCtrl = {
         return res
           .status(400)
           .json({ msg: "Post does not exist or you are not the owner." });
+
+      // invalidate posts cache
+      await cache.del("cache:posts:*");
 
       res.json({
         msg: "Post updated successfully.",
@@ -139,6 +156,9 @@ const postCtrl = {
       );
       if (!like) return res.status(400).json({ msg: "Post does not exist." });
 
+      // invalidate posts cache
+      await cache.del("cache:posts:*");
+
       res.json({ msg: "Post liked successfully." });
     } catch (err) {
       return res.status(500).json({ msg: err.message });
@@ -155,6 +175,9 @@ const postCtrl = {
       );
       if (!like) return res.status(400).json({ msg: "Post does not exist." });
 
+      // invalidate posts cache
+      await cache.del("cache:posts:*");
+
       res.json({ msg: "Post unliked successfully." });
     } catch (err) {
       return res.status(500).json({ msg: err.message });
@@ -163,12 +186,20 @@ const postCtrl = {
 
   getUserPosts: async (req, res) => {
     try {
+      const cacheKey = `cache:posts:getUserPosts:${
+        req.params.id
+      }:${JSON.stringify(req.query || {})}`;
+      const cached = await cache.get(cacheKey);
+      if (cached) return res.json(cached);
+
       const features = new APIfeatures(
         Posts.find({ userId: req.params.id }),
         req.query
       ).paginating();
       const posts = await features.query.sort("-createdAt");
-      res.json({ posts, result: posts.length });
+      const payload = { posts, result: posts.length };
+      await cache.set(cacheKey, payload);
+      res.json(payload);
     } catch (err) {
       return res.status(500).json({ msg: err.message });
     }
@@ -176,6 +207,9 @@ const postCtrl = {
 
   getPost: async (req, res) => {
     try {
+      const cacheKey = `cache:posts:getPost:${req.params.id}`;
+      const cached = await cache.get(cacheKey);
+      if (cached) return res.json(cached);
       const post = await Posts.findById(req.params.id).populate("comments");
       if (!post) return res.status(400).json({ msg: "Post does not exist." });
 
@@ -204,9 +238,11 @@ const postCtrl = {
         })
       );
 
-      res.json({
+      const payload = {
         post: { ...post._doc, user: postUser, comments: commentsWithUser },
-      });
+      };
+      await cache.set(cacheKey, payload);
+      res.json(payload);
     } catch (err) {
       return res.status(500).json({ msg: err.message });
     }
@@ -244,6 +280,9 @@ const postCtrl = {
           .json({ msg: "Post does not exist or you are not the owner." });
 
       await Comments.deleteMany({ _id: { $in: post.comments } });
+      // invalidate posts cache
+      await cache.del("cache:posts:*");
+
       res.json({
         msg: "Post deleted successfully.",
         newPost: { ...post, user: user },
