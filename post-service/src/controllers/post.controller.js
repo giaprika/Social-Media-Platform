@@ -4,7 +4,11 @@ const config = require("../config/env");
 const USER_SERVICE_URL = config.USER_SERVICE_URL;
 const axios = require("axios");
 const cache = require("../utils/cache");
-const { publishPostLiked, publishPostUnliked } = require("../utils/rabbitmq");
+const {
+  publishPostCreated,
+  publishPostLiked,
+  publishPostUnliked,
+} = require("../utils/rabbitmq");
 
 class APIfeatures {
   constructor(query, queryString) {
@@ -35,6 +39,16 @@ const postCtrl = {
 
       // invalidate posts cache
       await cache.del("cache:posts:*");
+
+      // Publish event to followers
+      publishPostCreated({
+        postId: newPost._id,
+        userId: user._id,
+        followers: user.followers || [],
+        content,
+      }).catch((err) =>
+        console.error("Failed to publish post created event:", err)
+      );
 
       res.json({
         msg: "Post created successfully.",

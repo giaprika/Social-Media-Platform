@@ -75,17 +75,17 @@ const NotificationEvents = {
   COMMENT_LIKED: "COMMENT_LIKED",
 };
 
-const publishPostCreated = async ({ postId, userId, postOwnerId, content }) => {
-  if (userId === postOwnerId) return; // Don't notify self
+const publishPostCreated = async ({ postId, userId, followers, content }) => {
+  if (!followers || followers.length === 0) return; // Don't publish if no followers
 
   return publishNotificationEvent({
     type: NotificationEvents.POST_CREATED,
     data: {
       postId,
       userId,
-      recipients: [postOwnerId],
+      recipients: followers,
       url: `/post/${postId}`,
-      text: "created a new post",
+      text: "posted a new update",
       content,
     },
   });
