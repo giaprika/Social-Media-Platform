@@ -1,6 +1,5 @@
 import { GLOBALTYPES, EditData, DeleteData } from "./globalTypes";
 import { POST_TYPES } from "./postAction";
-import { createNotify, removeNotify } from "./notifyAction";
 import {
   postDataAPI,
   patchDataAPI,
@@ -28,20 +27,6 @@ export const createComment =
 
       // todo socket
       socket.emit("createComment", newPost);
-
-      // todo notification
-      const msg = {
-        id: res.data.newComment._id,
-        text: newComment.reply
-          ? "mentioned you in a comment."
-          : "commented on your post.",
-        recipients: newComment.reply ? [newComment.tag._id] : [post.user._id],
-        url: `/post/${post._id}`,
-        content: newComment.reply ? newComment.content : post.content,
-        image: post.images[0].url,
-      };
-
-      dispatch(createNotify({ msg, auth, socket }));
     } catch (err) {
       dispatch({
         type: GLOBALTYPES.ALERT,
@@ -132,18 +117,6 @@ export const deleteComment =
     try {
       deleteArr.forEach((item) => {
         deleteDataAPI(`/posts/comment/${item._id}`);
-
-        // todo notification
-        const msg = {
-          id: item._id,
-          text: item.reply
-            ? "mentioned you in a comment."
-            : "commented on your post.",
-          recipients: item.reply ? [item.tag._id] : [post.user._id],
-          url: `/post/${post._id}`,
-        };
-
-        dispatch(removeNotify({ msg, auth, socket }));
       });
     } catch (err) {
       dispatch({

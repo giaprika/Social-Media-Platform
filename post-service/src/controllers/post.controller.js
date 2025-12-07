@@ -4,6 +4,7 @@ const config = require("../config/env");
 const USER_SERVICE_URL = config.USER_SERVICE_URL;
 const axios = require("axios");
 const cache = require("../utils/cache");
+const { publishPostLiked, publishPostUnliked } = require("../utils/rabbitmq");
 
 class APIfeatures {
   constructor(query, queryString) {
@@ -159,6 +160,15 @@ const postCtrl = {
       // invalidate posts cache
       await cache.del("cache:posts:*");
 
+      // Publish event to notification queue (async, don't wait)
+      publishPostLiked({
+        postId: req.params.id,
+        userId,
+        postOwnerId: like.userId.toString(),
+      }).catch((err) =>
+        console.error("Failed to publish post liked event:", err)
+      );
+
       res.json({ msg: "Post liked successfully." });
     } catch (err) {
       return res.status(500).json({ msg: err.message });
@@ -177,6 +187,15 @@ const postCtrl = {
 
       // invalidate posts cache
       await cache.del("cache:posts:*");
+
+      // Publish unlike event (remove notification)
+      publishPostUnliked({
+        postId: req.params.id,
+        userId,
+        postOwnerId: like.userId.toString(),
+      }).catch((err) =>
+        console.error("Failed to publish post unliked event:", err)
+      );
 
       res.json({ msg: "Post unliked successfully." });
     } catch (err) {

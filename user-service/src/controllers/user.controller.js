@@ -1,5 +1,9 @@
 const Users = require("../models/user.model");
 const cache = require("../utils/cache");
+const {
+  publishUserFollowed,
+  publishUserUnfollowed,
+} = require("../utils/rabbitmq");
 
 const userCtrl = {
   searchUser: async (req, res) => {
@@ -90,6 +94,14 @@ const userCtrl = {
       await cache.del(`cache:users:getUser:${userId}`);
       await cache.del("cache:users:*");
 
+      // Publish event to notification queue
+      publishUserFollowed({
+        followerId: userId,
+        followedUserId: req.params.id,
+      }).catch((err) =>
+        console.error("Failed to publish user followed event:", err)
+      );
+
       res.json({ newUser });
     } catch (err) {
       return res.status(500).json({ msg: err.message });
@@ -114,6 +126,14 @@ const userCtrl = {
       await cache.del(`cache:users:getUser:${req.params.id}`);
       await cache.del(`cache:users:getUser:${userId}`);
       await cache.del("cache:users:*");
+
+      // Publish unfollow event (remove notification)
+      publishUserUnfollowed({
+        followerId: userId,
+        followedUserId: req.params.id,
+      }).catch((err) =>
+        console.error("Failed to publish user unfollowed event:", err)
+      );
 
       res.json({ newUser });
     } catch (err) {

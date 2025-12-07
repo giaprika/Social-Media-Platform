@@ -6,7 +6,6 @@ import {
   deleteDataAPI,
 } from "../../utils/fetchData";
 import { imageUpload } from "../../utils/imageUpload";
-import { createNotify, removeNotify } from "./notifyAction";
 
 export const POST_TYPES = {
   CREATE_POST: "CREATE_POST",
@@ -46,18 +45,6 @@ export const createPost =
       });
 
       dispatch({ type: GLOBALTYPES.ALERT, payload: { loading: false } });
-
-      // todo notification
-      const msg = {
-        id: res.data.newPost._id,
-        text: "Added a new post.",
-        recipients: res.data.newPost.user.followers,
-        url: `/post/${res.data.newPost._id}`,
-        content,
-        image: media[0].url,
-      };
-
-      dispatch(createNotify({ msg, auth, socket }));
     } catch (err) {
       console.log(err);
       dispatch({
@@ -131,18 +118,6 @@ export const likePost =
 
     try {
       await patchDataAPI(`/posts/post/${post._id}/like`, null);
-
-      // todo notification
-      const msg = {
-        id: auth.user._id,
-        text: "Liked your post.",
-        recipients: [post.user._id],
-        url: `/post/${post._id}`,
-        content: post.content,
-        image: post.images[0].url,
-      };
-
-      dispatch(createNotify({ msg, auth, socket }));
     } catch (err) {
       dispatch({
         type: GLOBALTYPES.ALERT,
@@ -166,16 +141,6 @@ export const unLikePost =
 
     try {
       await patchDataAPI(`/posts/post/${post._id}/unlike`, null);
-
-      // todo notification
-      const msg = {
-        id: auth.user._id,
-        text: "Liked your post.",
-        recipients: [post.user._id],
-        url: `/post/${post._id}`,
-      };
-
-      dispatch(removeNotify({ msg, auth, socket }));
     } catch (err) {
       dispatch({
         type: GLOBALTYPES.ALERT,
@@ -210,17 +175,7 @@ export const deletePost =
     dispatch({ type: POST_TYPES.DELETE_POST, payload: post });
 
     try {
-      const res = await deleteDataAPI(`/posts/post/${post._id}`);
-
-      // todo notification
-      const msg = {
-        id: post._id,
-        text: "Added a new post.",
-        recipients: res.data.newPost.user.followers,
-        url: `/post/${post._id}`,
-      };
-
-      dispatch(removeNotify({ msg, auth, socket }));
+      await deleteDataAPI(`/posts/post/${post._id}`);
     } catch (err) {
       dispatch({
         type: GLOBALTYPES.ALERT,

@@ -1,5 +1,9 @@
 const Comments = require("../models/comment.model");
 const Posts = require("../models/post.model");
+const {
+  publishCommentCreated,
+  publishCommentLiked,
+} = require("../utils/rabbitmq");
 
 const commentCtrl = {
   createComment: async (req, res) => {
@@ -29,6 +33,19 @@ const commentCtrl = {
         { new: true }
       );
       await newComment.save();
+
+      // Publish event to notification queue
+      publishCommentCreated({
+        commentId: newComment._id.toString(),
+        postId,
+        userId,
+        postOwnerId,
+        content,
+        tag,
+      }).catch((err) =>
+        console.error("Failed to publish comment created event:", err)
+      );
+
       res.json({ newComment });
     } catch (err) {
       return res.status(500).json({ msg: err.message });
@@ -60,11 +77,24 @@ const commentCtrl = {
         return res
           .status(400)
           .json({ msg: "You have already liked this post" });
-      await Comments.findOneAndUpdate(
+      const comment_ = await Comments.findOneAndUpdate(
         { _id: req.params.id },
         { $push: { likes: userId } },
         { new: true }
       );
+
+      // Publish event to notification queue
+      if (comment_) {
+        publishCommentLiked({
+          commentId: req.params.id,
+          postId: comment_.postId.toString(),
+          userId,
+          commentOwnerId: comment_.userId.toString(),
+        }).catch((err) =>
+          console.error("Failed to publish comment liked event:", err)
+        );
+      }
+
       res.json({ msg: "Comment liked successfully." });
     } catch (err) {
       return res.status(500).json({ msg: err.message });
