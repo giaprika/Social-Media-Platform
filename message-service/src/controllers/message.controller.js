@@ -3,8 +3,16 @@ const Messages = require("../models/message.model");
 const axios = require("axios");
 const config = require("../config/env");
 const cache = require("../utils/cache");
+const CircuitBreaker = require("../utils/circuitBreaker");
 
 const USER_SERVICE_URL = config.USER_SERVICE_URL;
+
+const userServiceCircuitBreaker = new CircuitBreaker({
+  serviceName: "user-service",
+  failureThreshold: 5,
+  successThreshold: 2,
+  timeout: 30000,
+});
 
 class APIfeatures {
   constructor(query, queryString) {
@@ -75,10 +83,10 @@ const messageCtrl = {
           const otherUserId = conv.recipients.find((id) => id !== userId);
 
           try {
-            const { data: user } = await axios.get(
-              `${USER_SERVICE_URL}/user/${otherUserId}`
+            const user = await userServiceCircuitBreaker.execute(() =>
+              axios.get(`${USER_SERVICE_URL}/user/${otherUserId}`)
             );
-            return { ...conv._doc, user };
+            return { ...conv._doc, user: user.data };
           } catch {
             return { ...conv._doc, user: null };
           }

@@ -121,6 +121,60 @@ services:
     networks:
       - app-net
 
+  notification-consumer-1:
+    build:
+      context: ./notification-service
+    container_name: notification-consumer-1
+    env_file:
+      - ./notification-service/.env
+    environment:
+      PORT: 8005
+      MONGODB_URL: mongodb://host.docker.internal:27017/notification-service
+      USER_SERVICE_URL: http://user-service:8001/api
+      REDIS_URL: redis://redis:6379
+      RABBITMQ_URL: amqp://rabbitmq:5672
+      GATEWAY_SOCKET_URL: http://gateway:8080
+      CONSUMER_ONLY: "true"
+    volumes:
+      - ./notification-service:/app
+      - /app/node_modules
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      gateway:
+        condition: service_started
+    networks:
+      - app-net
+
+  notification-consumer-2:
+    build:
+      context: ./notification-service
+    container_name: notification-consumer-2
+    env_file:
+      - ./notification-service/.env
+    environment:
+      PORT: 8006
+      MONGODB_URL: mongodb://host.docker.internal:27017/notification-service
+      USER_SERVICE_URL: http://user-service:8001/api
+      REDIS_URL: redis://redis:6379
+      RABBITMQ_URL: amqp://rabbitmq:5672
+      GATEWAY_SOCKET_URL: http://gateway:8080
+      CONSUMER_ONLY: "true"
+    volumes:
+      - ./notification-service:/app
+      - /app/node_modules
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      gateway:
+        condition: service_started
+    networks:
+      - app-net
+
   rabbitmq:
     image: rabbitmq:3-management
     container_name: rabbitmq-socialmedia

@@ -4,11 +4,20 @@ const config = require("../config/env");
 const USER_SERVICE_URL = config.USER_SERVICE_URL;
 const axios = require("axios");
 const cache = require("../utils/cache");
+const CircuitBreaker = require("../utils/circuitBreaker");
 const {
   publishPostCreated,
   publishPostLiked,
   publishPostUnliked,
 } = require("../utils/rabbitmq");
+
+// Circuit Breaker for user-service calls
+const userServiceCircuitBreaker = new CircuitBreaker({
+  serviceName: "user-service",
+  failureThreshold: 5,
+  successThreshold: 2,
+  timeout: 30000,
+});
 
 class APIfeatures {
   constructor(query, queryString) {
@@ -28,7 +37,9 @@ const postCtrl = {
   createPost: async (req, res) => {
     try {
       const userId = req.headers["x-user-id"];
-      const userRes = await axios.get(`${USER_SERVICE_URL}/user/${userId}`);
+      const userRes = await userServiceCircuitBreaker.execute(() =>
+        axios.get(`${USER_SERVICE_URL}/user/${userId}`)
+      );
       const user = userRes.data.user;
       const { content, images } = req.body;
       if (images.length === 0)
@@ -67,7 +78,9 @@ const postCtrl = {
       )}`;
       const cached = await cache.get(cacheKey);
       if (cached) return res.json(cached);
-      const userRes = await axios.get(`${USER_SERVICE_URL}/user/${userId}`);
+      const userRes = await userServiceCircuitBreaker.execute(() =>
+        axios.get(`${USER_SERVICE_URL}/user/${userId}`)
+      );
       const user = userRes.data.user;
       const features = new APIfeatures(
         Posts.find({ userId: [...user.following, user._id] }),
@@ -82,8 +95,8 @@ const postCtrl = {
         posts.map(async (post) => {
           let postUser = null;
           try {
-            const { data } = await axios.get(
-              `${USER_SERVICE_URL}/user/${post.userId}`
+            const { data } = await userServiceCircuitBreaker.execute(() =>
+              axios.get(`${USER_SERVICE_URL}/user/${post.userId}`)
             );
             postUser = data.user || data;
           } catch {
@@ -95,8 +108,8 @@ const postCtrl = {
             post.comments.map(async (comment) => {
               let commentUser = null;
               try {
-                const { data } = await axios.get(
-                  `${USER_SERVICE_URL}/user/${comment.userId}`
+                const { data } = await userServiceCircuitBreaker.execute(() =>
+                  axios.get(`${USER_SERVICE_URL}/user/${comment.userId}`)
                 );
                 commentUser = data.user || data;
               } catch {
@@ -248,8 +261,8 @@ const postCtrl = {
 
       let postUser = null;
       try {
-        const { data } = await axios.get(
-          `${USER_SERVICE_URL}/user/${post.userId}`
+        const { data } = await userServiceCircuitBreaker.execute(() =>
+          axios.get(`${USER_SERVICE_URL}/user/${post.userId}`)
         );
         postUser = data.user || data;
       } catch {
@@ -260,8 +273,8 @@ const postCtrl = {
         post.comments.map(async (comment) => {
           let commentUser = null;
           try {
-            const { data } = await axios.get(
-              `${USER_SERVICE_URL}/user/${comment.userId}`
+            const { data } = await userServiceCircuitBreaker.execute(() =>
+              axios.get(`${USER_SERVICE_URL}/user/${comment.userId}`)
             );
             commentUser = data.user || data;
           } catch {
@@ -284,7 +297,9 @@ const postCtrl = {
   getPostDiscover: async (req, res) => {
     try {
       const userId = req.headers["x-user-id"];
-      const userRes = await axios.get(`${USER_SERVICE_URL}/user/${userId}`);
+      const userRes = await userServiceCircuitBreaker.execute(() =>
+        axios.get(`${USER_SERVICE_URL}/user/${userId}`)
+      );
       const user = userRes.data.user;
       const newArr = [...user.following, user._id];
       const num = req.query.num || 8;
@@ -301,7 +316,9 @@ const postCtrl = {
   deletePost: async (req, res) => {
     try {
       const userId = req.headers["x-user-id"];
-      const userRes = await axios.get(`${USER_SERVICE_URL}/user/${userId}`);
+      const userRes = await userServiceCircuitBreaker.execute(() =>
+        axios.get(`${USER_SERVICE_URL}/user/${userId}`)
+      );
       const user = userRes.data.user;
       const post = await Posts.findOneAndDelete({
         _id: req.params.id,
@@ -396,7 +413,9 @@ const postCtrl = {
   getSavePost: async (req, res) => {
     try {
       const userId = req.headers["x-user-id"];
-      const userRes = await axios.get(`${USER_SERVICE_URL}/user/${userId}`);
+      const userRes = await userServiceCircuitBreaker.execute(() =>
+        axios.get(`${USER_SERVICE_URL}/user/${userId}`)
+      );
       const user = userRes.data.user;
       const features = new APIfeatures(
         Posts.find({ _id: { $in: user.saved } }),
